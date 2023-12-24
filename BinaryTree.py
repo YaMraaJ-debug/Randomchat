@@ -41,16 +41,17 @@ class TreeNode:
             self.rightChild.parent = self
 
     def __iter__(self):
-        if self:
-            if self.has_left_child():
-                for elem in self.leftChild:
-                    if elem is not None:
-                        yield elem
-            yield self.val
-            if self.has_right_child():
-                for elem in self.rightChild:
-                    if elem is not None:
-                        yield elem
+        if not self:
+            return
+        if self.has_left_child():
+            for elem in self.leftChild:
+                if elem is not None:
+                    yield elem
+        yield self.val
+        if self.has_right_child():
+            for elem in self.rightChild:
+                if elem is not None:
+                    yield elem
 
 
 class BinaryTree:
@@ -70,11 +71,10 @@ class BinaryTree:
                 self._put(key, val, current_node.leftChild)
             else:
                 current_node.leftChild = TreeNode(key, val, parent=current_node)
+        elif current_node.has_right_child():
+            self._put(key, val, current_node.rightChild)
         else:
-            if current_node.has_right_child():
-                self._put(key, val, current_node.rightChild)
-            else:
-                current_node.rightChild = TreeNode(key, val, parent=current_node)
+            current_node.rightChild = TreeNode(key, val, parent=current_node)
 
     def put(self, key, val):
         if self.root is None:
@@ -99,34 +99,26 @@ class BinaryTree:
     def get(self, key):
         if self.root is None:
             return None
-        else:
-            res = self._get(key, self.root)
-            if res is None:
-                return None
-            else:
-                return res.val
+        res = self._get(key, self.root)
+        return None if res is None else res.val
 
     def __getitem__(self, key):
         return self.get(key)
 
     def __contains__(self, key):
-        if self._get(key, self.root) is None:
-            return False
-        else:
-            return True
+        return self._get(key, self.root) is not None
 
     def find_successor(self):
         successor = None
         if self.hasRightChild():
             successor = self.rightChild.find_min()
-        else:
-            if self.parent:
-                if self.isLeftChild():
-                    successor = self.parent
-                else:
-                    self.parent.rightChild = None
-                    successor = self.parent.find_c()
-                    self.parent.rightChild = self
+        elif self.parent:
+            if self.isLeftChild():
+                successor = self.parent
+            else:
+                self.parent.rightChild = None
+                successor = self.parent.find_c()
+                self.parent.rightChild = self
         return successor
 
     def find_min(self):
@@ -166,44 +158,40 @@ class BinaryTree:
             successor.splice_out()
             current_node.key = successor.key
             current_node.payload = successor.payload
-        else:
-            if current_node.has_left_child():
-                if current_node.is_left_child():
-                    current_node.leftChild.parent = current_node.parent
-                    current_node.parent.leftChild = current_node.leftChild
-                elif current_node.is_right_child():
-                    current_node.leftChild.parent = current_node.parent
-                    current_node.parent.rightChild = current_node.leftChild
-                else:
-                    current_node.replaceNodeData(
-                        current_node.leftChild.key,
-                        current_node.leftChild.payload,
-                        current_node.leftChild.leftChild,
-                        current_node.leftChild.rightChild,
-                    )
+        elif current_node.has_left_child():
+            if current_node.is_left_child():
+                current_node.leftChild.parent = current_node.parent
+                current_node.parent.leftChild = current_node.leftChild
+            elif current_node.is_right_child():
+                current_node.leftChild.parent = current_node.parent
+                current_node.parent.rightChild = current_node.leftChild
             else:
-                if current_node.is_left_child():
-                    current_node.rightChild.parent = current_node.parent
-                    current_node.parent.leftChild = current_node.rightChild
-                elif current_node.is_right_child():
-                    current_node.rightChild.parent = current_node.parent
-                    current_node.parent.rightChild = current_node.rightChild
-                else:
-                    current_node.replaceNodeData(
-                        current_node.rightChild.key,
-                        current_node.rightChild.payload,
-                        current_node.rightChild.leftChild,
-                        current_node.rightChild.rightChild,
-                    )
+                current_node.replaceNodeData(
+                    current_node.leftChild.key,
+                    current_node.leftChild.payload,
+                    current_node.leftChild.leftChild,
+                    current_node.leftChild.rightChild,
+                )
+        elif current_node.is_left_child():
+            current_node.rightChild.parent = current_node.parent
+            current_node.parent.leftChild = current_node.rightChild
+        elif current_node.is_right_child():
+            current_node.rightChild.parent = current_node.parent
+            current_node.parent.rightChild = current_node.rightChild
+        else:
+            current_node.replaceNodeData(
+                current_node.rightChild.key,
+                current_node.rightChild.payload,
+                current_node.rightChild.leftChild,
+                current_node.rightChild.rightChild,
+            )
 
     def delete(self, key):
         if self.size > 1:
-            node_for_remove = self._get(key, self.root)
-            if node_for_remove:
-                self.remove(node_for_remove)
-                self.size = self.size - 1
-            else:
+            if not (node_for_remove := self._get(key, self.root)):
                 raise KeyError("Error, node with key is not found")
+            self.remove(node_for_remove)
+            self.size = self.size - 1
         elif self.size == 1 and self.root.key == key:
             self.root = None
             self.size = 0
@@ -214,5 +202,4 @@ class BinaryTree:
         self.delete(key)
 
     def __iter__(self):
-        for i in self.root:
-            yield i
+        yield from self.root

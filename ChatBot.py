@@ -46,9 +46,8 @@ def connect_user(user_id):
     """
     if user_id in communications:
         return True
-    else:
-        bot.send_message(user_id, m_has_not_dialog)
-        return False
+    bot.send_message(user_id, m_has_not_dialog)
+    return False
 
 
 @bot.message_handler(commands=["start"])
@@ -94,9 +93,7 @@ def echo(message):
     bot.send_message(user_id, m_good_bye)
 
 
-@bot.message_handler(
-    func=lambda call: call.text == like_str or call.text == dislike_str
-)
+@bot.message_handler(func=lambda call: call.text in [like_str, dislike_str])
 def echo(message):
     """
     This function reacts to pressing buttons: 'Like' and 'Dislike'
@@ -193,13 +190,13 @@ def echo(message):
 
         bot.send_voice(communications[user_id]["UserTo"], message.voice.file_id)
     elif message.content_type == "text":
-        if (
-            message.text != "/start"
-            and message.text != "/stop"
-            and message.text != dislike_str
-            and message.text != like_str
-            and message.text != "NewChat"
-        ):
+        if message.text not in [
+            "/start",
+            "/stop",
+            dislike_str,
+            like_str,
+            "NewChat",
+        ]:
 
             if not connect_user(user_id):
                 return
@@ -225,34 +222,31 @@ def echo(call):
     :param call:
     :return:
     """
-    if call.data == "NewChat":
-        user_id = call.message.chat.id
-        user_to_id = None
+    if call.data != "NewChat":
+        return
+    user_id = call.message.chat.id
+    add_users(chat=call.message.chat)
 
-        add_users(chat=call.message.chat)
+    if len(free_users) < 2:
+        bot.send_message(user_id, m_is_not_free_users)
+        return
 
-        if len(free_users) < 2:
-            bot.send_message(user_id, m_is_not_free_users)
-            return
+    if free_users[user_id]["state"] == 0:
+        return
 
-        if free_users[user_id]["state"] == 0:
-            return
+    user_to_id = next(
+        (user["ID"] for user in free_users if user["state"] == 0), None
+    )
+    if user_to_id is None:
+        bot.send_message(user_id, m_is_not_free_users)
+        return
 
-        for user in free_users:
-            if user["state"] == 0:
-                user_to_id = user["ID"]
-                break
+    keyboard = generate_markup()
 
-        if user_to_id is None:
-            bot.send_message(user_id, m_is_not_free_users)
-            return
+    add_communications(user_id, user_to_id)
 
-        keyboard = generate_markup()
-
-        add_communications(user_id, user_to_id)
-
-        bot.send_message(user_id, m_is_connect, reply_markup=keyboard)
-        bot.send_message(user_to_id, m_is_connect, reply_markup=keyboard)
+    bot.send_message(user_id, m_is_connect, reply_markup=keyboard)
+    bot.send_message(user_to_id, m_is_connect, reply_markup=keyboard)
 
 
 if __name__ == "__main__":
